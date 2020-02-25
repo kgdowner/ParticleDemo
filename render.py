@@ -3,8 +3,13 @@
 from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
+
 from math import *
+import numpy as np
+
 from vector_util import *
+
+#import mesh_object
 
 
 
@@ -37,6 +42,70 @@ movement_start_y	= 0
 degrees_x_last		= 0
 degrees_y_last		= 0
 
+render_objects = []
+
+
+
+# object functions
+def create_vbo(data_list, buffer_type):
+	data = np.array(data_list, dtype=np.float32)
+
+	index = glGenBuffers(1)
+	glBindBuffer(buffer_type, index)
+	glBufferData(buffer_type, data.nbytes, data, GL_STATIC_DRAW)
+
+	return index
+
+
+def create_vao(points, colors):
+	# create vertex buffer objects
+	index_points = create_vbo(points, GL_ARRAY_BUFFER)
+	index_colors = create_vbo(colors, GL_ARRAY_BUFFER)
+
+	# create vertex array object & add vbos
+	index_vao = glGenVertexArrays(1)
+	glBindVertexArray(index_vao)
+
+	glBindBuffer(GL_ARRAY_BUFFER, index_points)
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, None)
+
+	glBindBuffer(GL_ARRAY_BUFFER, index_colors)
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
+
+	# enable the vbo's in the vao
+	glEnableVertexAttribArray(0)
+	glEnableVertexAttribArray(1)
+
+	return index_vao
+
+
+def create_shader(shader_text, shader_type):
+	shader = glCreateShader(shader_type)
+	glShaderSource(shader, shader_text)
+	glCompileShader(shader)
+
+	return shader
+
+
+def create_program(vert_shader, frag_shader, attributes):
+	program = glCreateProgram()
+
+	glAttachShader(program, create_shader(vert_shader, GL_VERTEX_SHADER))
+	glAttachShader(program, create_shader(frag_shader, GL_FRAGMENT_SHADER))
+
+	index = 0
+	for attrib in attributes:
+		glBindAttribLocation(program, index, attrib)
+		index += 1
+
+	glLinkProgram(program)
+
+	return program
+
+
+def render_loop():
+	glutMainLoop()
+
 
 
 # callbacks
@@ -51,7 +120,6 @@ def keyboard_func(key, x, y):
 		direction = rot3([-1, 0, 0], camera_rotation)
 		camera_position = add_vectors(camera_position, direction)
 
-		print("a")
 	if key == b's':
 		direction = rot3([0, 0, 1], camera_rotation)
 		camera_position = add_vectors(camera_position, direction)
@@ -114,7 +182,6 @@ def display_func():
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	glLoadIdentity()
 
-
 	# camera / all object transformations
 	# reversed, since it's moving the world and not the camera
 	glRotate(-camera_rotation[0], 1, 0, 0)
@@ -123,34 +190,38 @@ def display_func():
 
 	glTranslate(-camera_position[0], -camera_position[1], -camera_position[2])
 
+	# draw objects passed to the render_objects array
+	for robj in render_objects:
+		glUseProgram(robj[1])
+
+		glBindVertexArray(robj[0])
+		glDrawArrays(GL_TRIANGLES, 0, 3)
+
+		glUseProgram(0)
 
 	# draw a teapot
 	glPushMatrix()
 	glTranslatef(0, 0.8, 0)
 	glColor3f(0, 1, 0)
-	#glutSolidCube(1)
-	#glutSolidTeapot(1)
 	glutWireTeapot(1)
 	glPopMatrix()
-
 
 	# 3D Coordinates Indicator
 	glBegin(GL_LINES)
 
-	#glColor3f(1.0, 0.0, 0.0)
-	#glVertex3f( 2.0, 0.0, 0.0)
-	#glVertex3f(-2.0, 0.0, 0.0)
+	# glColor3f(1.0, 0.0, 0.0)
+	# glVertex3f( 2.0, 0.0, 0.0)
+	# glVertex3f(-2.0, 0.0, 0.0)
 
 	glColor3f(0.0, 1.0, 0.0)
 	glVertex3f(0.0,  2.0, 0.0)
 	glVertex3f(0.0, -2.0, 0.0)
 
-	#glColor3f(0.0, 0.0, 1.0)
-	#glVertex3f(0.0, 0.0,  2.0)
-	#glVertex3f(0.0, 0.0, -2.0)
+	# glColor3f(0.0, 0.0, 1.0)
+	# glVertex3f(0.0, 0.0,  2.0)
+	# glVertex3f(0.0, 0.0, -2.0)
 
 	glEnd()
-
 
 	# 2D Coordinate Grid on XZ axis
 	grid_side_length = 10
@@ -177,7 +248,6 @@ def display_func():
 		glVertex3f( grid_side_length/2, 0.0, i - grid_side_length/2)
 
 	glEnd()
-
 
 	glutSwapBuffers()
 
@@ -224,7 +294,3 @@ glLoadIdentity()
 gluPerspective(field_of_view_v, float(window_width)/float(window_height), clip_dist_near, clip_dist_far)
 
 glMatrixMode(GL_MODELVIEW)  # TODO: move this to the display function?
-
-
-# start render loop  - TODO: move this to the main application
-#glutMainLoop()
