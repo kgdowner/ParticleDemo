@@ -4,6 +4,10 @@ def add_vectors(vector1, vector2):
 	return [vector1[0] + vector2[0], vector1[1] + vector2[1], vector1[2] + vector2[2]]
 
 
+def mult_vector(scalar, vector):
+	return [scalar * vector[0], scalar * vector[1], scalar * vector[2]]
+
+
 def unit_vector(vector):
 	magnitude = vector[0]*vector[0] + vector[1]*vector[1] + vector[2]*vector[2]
 	magnitude = sqrt(magnitude)

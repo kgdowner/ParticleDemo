@@ -9,8 +9,6 @@ import numpy as np
 
 from vector_util import *
 
-#import mesh_object
-
 
 
 # settings
@@ -29,12 +27,22 @@ clear_color		= [0, 0, 0, 0]
 clear_depth		= 1.0
 
 sensitivity	= 4		# 1 = direct translation from pixels to FOV angle moved
-move_speed	= 1		# 1 unit/time? (TODO: implement / convert to seconds?)
+move_speed	= 8		# In units / second
+
+move_forward	= ord('w')
+move_backward	= ord('s')
+move_left		= ord('a')
+move_right		= ord('d')
+move_up			= ord(' ')
+move_down		= ord('c')
+#pan_camera		=  # TODO: move mouse movement to glut idle func
 
 
 # globals
-camera_rotation	= [0, 0, 0]
 camera_position	= [0, 0, 6]
+camera_rotation	= [0, 0, 0]
+
+pressed_keys = {}
 
 movement_event		= False
 movement_start_x	= 0
@@ -103,42 +111,36 @@ def create_program(vert_shader, frag_shader, attributes):
 	return program
 
 
+
+# helper functions
 def render_loop():
 	glutMainLoop()
+
+
+def move_camera(axis_vector, time_delta):
+	global camera_position
+
+	direction = mult_vector(move_speed * time_delta / 1000, axis_vector)
+	direction = rot3(direction, camera_rotation)
+
+	camera_position = add_vectors(camera_position, direction)
 
 
 
 # callbacks
 def keyboard_func(key, x, y):
-	global camera_position, camera_rotation
+	ascii_key = ord(key.decode())
 
-	if key == b'w':
-		direction = rot3([0, 0, -1], camera_rotation)
-		camera_position = add_vectors(camera_position, direction)
-
-	if key == b'a':
-		direction = rot3([-1, 0, 0], camera_rotation)
-		camera_position = add_vectors(camera_position, direction)
-
-	if key == b's':
-		direction = rot3([0, 0, 1], camera_rotation)
-		camera_position = add_vectors(camera_position, direction)
-
-	if key == b'd':
-		direction = rot3([1, 0, 0], camera_rotation)
-		camera_position = add_vectors(camera_position, direction)
-
-	if key == b' ':
-		direction = rot3([0, 1, 0], camera_rotation)
-		camera_position = add_vectors(camera_position, direction)
+	# record the time this key was pressed down
+	pressed_keys[ascii_key] = glutGet(GLUT_ELAPSED_TIME)
 
 
-def special_func(key, x, y):
-	global camera_position, camera_rotation
+def keyboard_up_func(key, x, y):
+	ascii_key = ord(key.decode())
 
-	if key == 114:  # ctrl
-		direction = rot3([0, -1, 0], camera_rotation)
-		camera_position = add_vectors(camera_position, direction)
+	# stopped pressing this key
+	if pressed_keys[ascii_key]:
+		pressed_keys.pop(ascii_key)
 
 
 def mouse_func(button, state, x, y):
@@ -158,7 +160,7 @@ def mouse_func(button, state, x, y):
 
 
 def motion_func(x, y):
-	global camera_position, camera_rotation
+	global camera_rotation
 	global degrees_x_last, degrees_y_last
 	#global sensitivity  # FIXME: remove? should be working without - already init'd not assigned here
 
@@ -176,8 +178,6 @@ def motion_func(x, y):
 
 
 def display_func():
-	global camera_rotation, camera_position
-
 	# clear screen and reset transform matrix
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 	glLoadIdentity()
@@ -253,9 +253,33 @@ def display_func():
 
 
 def idle_func():
-	# program logic here
+	current_time = glutGet(GLUT_ELAPSED_TIME)
 
-	# TODO: move all the camera movement updates here from the keyboard/mouse funcs
+	# camera movement
+	if move_forward in pressed_keys:
+		move_camera([0, 0, -1], current_time - pressed_keys[move_forward])
+		pressed_keys[move_forward] = current_time
+
+	if move_backward in pressed_keys:
+		move_camera([0, 0, 1], current_time - pressed_keys[move_backward])
+		pressed_keys[move_backward] = current_time
+
+	if move_left in pressed_keys:
+		move_camera([-1, 0, 0], current_time - pressed_keys[move_left])
+		pressed_keys[move_left] = current_time
+
+	if move_right in pressed_keys:
+		move_camera([1, 0, 0], current_time - pressed_keys[move_right])
+		pressed_keys[move_right] = current_time
+
+	if move_up in pressed_keys:
+		move_camera([0, 1, 0], current_time - pressed_keys[move_up])
+		pressed_keys[move_up] = current_time
+
+	if move_down in pressed_keys:
+		move_camera([0, -1, 0], current_time - pressed_keys[move_down])
+		pressed_keys[move_down] = current_time
+
 
 	# tell glut to re-run the display function
 	glutPostRedisplay()
@@ -272,8 +296,10 @@ window = glutCreateWindow(window_title)
 
 
 # register glut callbacks
+glutIgnoreKeyRepeat(1)
+
 glutKeyboardFunc(keyboard_func)
-glutSpecialFunc(special_func)
+glutKeyboardUpFunc(keyboard_up_func)
 glutMouseFunc(mouse_func)
 glutMotionFunc(motion_func)
 
