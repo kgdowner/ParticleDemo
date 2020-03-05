@@ -43,12 +43,7 @@ camera_position	= [0, 0, 6]
 camera_rotation	= [0, 0, 0]
 
 pressed_keys = {}
-
-movement_event		= False
-movement_start_x	= 0
-movement_start_y	= 0
-degrees_x_last		= 0
-degrees_y_last		= 0
+pressed_mouse = {}
 
 render_objects = []
 
@@ -129,6 +124,9 @@ def move_camera(axis_vector, time_delta):
 
 # callbacks
 def keyboard_func(key, x, y):
+	global pressed_keys
+
+	# convert this key to ascii decimal code
 	ascii_key = ord(key.decode())
 
 	# record the time this key was pressed down
@@ -136,6 +134,9 @@ def keyboard_func(key, x, y):
 
 
 def keyboard_up_func(key, x, y):
+	global pressed_keys
+
+	# convert this key to ascii decimal code
 	ascii_key = ord(key.decode())
 
 	# stopped pressing this key
@@ -144,37 +145,24 @@ def keyboard_up_func(key, x, y):
 
 
 def mouse_func(button, state, x, y):
-	global movement_event, movement_start_x, movement_start_y
-	global degrees_x_last, degrees_y_last
+	global pressed_mouse
 
-	# start/end camera movement when right click is pressed/released
-	if button == 2:
-		if state == 0:
-			movement_event = True
-			movement_start_x = x
-			movement_start_y = y
-		else:
-			movement_event = False
-			degrees_x_last = 0
-			degrees_y_last = 0
+	# record mouse cursor position & initial movement delta (0) in pressed_mouse
+	if state == GLUT_DOWN:
+		pressed_mouse[button] = [x, y, 0, 0]
+	else:
+		pressed_mouse.pop(button)
 
 
 def motion_func(x, y):
-	global camera_rotation
-	global degrees_x_last, degrees_y_last
-	#global sensitivity  # FIXME: remove? should be working without - already init'd not assigned here
+	global pressed_mouse
 
-
-	# rotate camera
-	if movement_event:
-		degrees_x = field_of_view_h * (x - movement_start_x) / window_width
-		degrees_y = field_of_view_v * (y - movement_start_y) / window_height
-
-		camera_rotation[0] = camera_rotation[0] + sensitivity * (degrees_y_last - degrees_y)
-		camera_rotation[1] = camera_rotation[1] + sensitivity * (degrees_x_last - degrees_x)
-
-		degrees_x_last = degrees_x	# TODO: calculate this based on last frame's mouse pos, not initial mouse pos of event
-		degrees_y_last = degrees_y	# will remove need for degree_*_last backtracing
+	# update mouse movement delta and cursor position as the mouse is moved
+	for button in pressed_mouse:
+		pressed_mouse[button][2] += (x - pressed_mouse[button][0])
+		pressed_mouse[button][3] += (y - pressed_mouse[button][1])
+		pressed_mouse[button][0] = x
+		pressed_mouse[button][1] = y
 
 
 def display_func():
@@ -253,9 +241,12 @@ def display_func():
 
 
 def idle_func():
+	global pressed_keys, pressed_mouse, camera_rotation
+
+	# get time
 	current_time = glutGet(GLUT_ELAPSED_TIME)
 
-	# camera movement
+	# camera translation
 	if move_forward in pressed_keys:
 		move_camera([0, 0, -1], current_time - pressed_keys[move_forward])
 		pressed_keys[move_forward] = current_time
@@ -280,6 +271,16 @@ def idle_func():
 		move_camera([0, -1, 0], current_time - pressed_keys[move_down])
 		pressed_keys[move_down] = current_time
 
+	# camera rotation - TODO: way of selecting keypress/other mouse button in settings?
+	if GLUT_RIGHT_BUTTON in pressed_mouse:
+		degrees_x = field_of_view_h * pressed_mouse[GLUT_RIGHT_BUTTON][2] / window_width
+		degrees_y = field_of_view_v * pressed_mouse[GLUT_RIGHT_BUTTON][3] / window_height
+
+		camera_rotation[0] = camera_rotation[0] - sensitivity * degrees_y
+		camera_rotation[1] = camera_rotation[1] - sensitivity * degrees_x
+
+		pressed_mouse[GLUT_RIGHT_BUTTON][2] = 0
+		pressed_mouse[GLUT_RIGHT_BUTTON][3] = 0
 
 	# tell glut to re-run the display function
 	glutPostRedisplay()
@@ -320,3 +321,4 @@ glLoadIdentity()
 gluPerspective(field_of_view_v, float(window_width)/float(window_height), clip_dist_near, clip_dist_far)
 
 glMatrixMode(GL_MODELVIEW)  # TODO: move this to the display function?
+
