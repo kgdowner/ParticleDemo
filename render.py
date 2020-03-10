@@ -20,7 +20,7 @@ window_x		= 2300
 window_y		= 600
 
 field_of_view_h	= 90
-field_of_view_v	= degrees(2 * atan(tan(field_of_view_h / 2) * window_height / window_width))
+field_of_view_v	= degrees(2 * atan(tan(radians(field_of_view_h) / 2) * window_height / window_width))
 clip_dist_near	= 0.1
 clip_dist_far	= 100
 clear_color		= [0, 0, 0, 0]
@@ -35,12 +35,13 @@ move_left		= ord('a')
 move_right		= ord('d')
 move_up			= ord(' ')
 move_down		= ord('c')
-#pan_camera		=  # TODO: move mouse movement to glut idle func
+#pan_camera		= GLUT_RIGHT_BUTTON
 
 
 # globals
-camera_position	= [0, 0, 6]
-camera_rotation	= [0, 0, 0]
+projection_matrix = None
+camera_translation_matrix = [[1, 0, 0, 0], [0, 1, 0, 2], [0, 0, 1, -6], [0, 0, 0, 1]]
+camera_basis = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
 
 pressed_keys = {}
 pressed_mouse = {}
@@ -50,6 +51,25 @@ render_objects = []
 
 
 # object functions
+#gluPerspective(field_of_view_v, float(window_width)/float(window_height), clip_dist_near, clip_dist_far)
+def create_projection_matrix(vertical_fov, width, height, clip_near, clip_far):
+	theta = radians(vertical_fov)/2
+
+	n = clip_near
+	f = clip_far
+	t = clip_near * tan(theta)
+	b = -t
+	r = t * width / height
+	l = -r
+
+	return [
+		[n/r,   0,            0,            0],
+		[  0, n/t,            0,            0],
+		[  0,   0, -(f+n)/(f-n), -2*n*f/(f-n)],
+		[  0,   0,           -1,            0],
+	]
+
+
 def create_vbo(data_list, buffer_type):
 	data = np.array(data_list, dtype=np.float32)
 
@@ -112,15 +132,6 @@ def render_loop():
 	glutMainLoop()
 
 
-def move_camera(axis_vector, time_delta):
-	global camera_position
-
-	direction = mult_vector(move_speed * time_delta / 1000, axis_vector)
-	direction = rot3(direction, camera_rotation)
-
-	camera_position = add_vectors(camera_position, direction)
-
-
 
 # callbacks
 def keyboard_func(key, x, y):
@@ -168,31 +179,24 @@ def motion_func(x, y):
 def display_func():
 	# clear screen and reset transform matrix
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-	glLoadIdentity()
 
-	# camera / all object transformations
-	# reversed, since it's moving the world and not the camera
-	glRotate(-camera_rotation[0], 1, 0, 0)
-	glRotate(-camera_rotation[1], 0, 1, 0)
-	glRotate(-camera_rotation[2], 0, 0, 1)
+	# calculate the view matrix
+	camera_rotation_matrix = np.linalg.solve(np.eye(4), camera_basis).T
 
-	glTranslate(-camera_position[0], -camera_position[1], -camera_position[2])
+	ctmr = np.array(camera_translation_matrix)
+	ctmr[0][3] *= -1
+	ctmr[1][3] *= -1
+	ctmr[2][3] *= -1
+	ctmr = ctmr.T
 
-	# draw objects passed to the render_objects array
-	for robj in render_objects:
-		glUseProgram(robj[1])
+	view_matrix = np.dot(ctmr, camera_rotation_matrix)
 
-		glBindVertexArray(robj[0])
-		glDrawArrays(GL_TRIANGLES, 0, 3)
+	# calculate view-projection matrix
+	vp = np.dot(view_matrix, projection_matrix)
 
-		glUseProgram(0)
+	# camera / object transformations
+	glLoadMatrixf(vp)
 
-	# draw a teapot
-	glPushMatrix()
-	glTranslatef(0, 0.8, 0)
-	glColor3f(0, 1, 0)
-	glutWireTeapot(1)
-	glPopMatrix()
 
 	# 3D Coordinates Indicator
 	glBegin(GL_LINES)
@@ -237,6 +241,22 @@ def display_func():
 
 	glEnd()
 
+
+	# draw objects passed to the render_objects array
+	for robj in render_objects:
+		glUseProgram(robj[1])
+
+		# set the modelview matrix uniform
+		mvp_location = glGetUniformLocation(robj[1], "mvp")
+		if mvp_location != -1:
+			glUniformMatrix4fv(mvp_location, 1, GL_FALSE, vp)
+
+		glBindVertexArray(robj[0])
+		glDrawArrays(GL_TRIANGLES, 0, 3)
+
+	glUseProgram(0)
+
+
 	glutSwapBuffers()
 
 
@@ -247,38 +267,66 @@ def idle_func():
 	current_time = glutGet(GLUT_ELAPSED_TIME)
 
 	# camera translation
+	direction = [0, 0, 0]
+
 	if move_forward in pressed_keys:
-		move_camera([0, 0, -1], current_time - pressed_keys[move_forward])
+		delta = current_time - pressed_keys[move_forward]
+		direction = add_vectors(mult_vector(-move_speed * delta / 1000, camera_basis[2][:3]), direction)
 		pressed_keys[move_forward] = current_time
 
 	if move_backward in pressed_keys:
-		move_camera([0, 0, 1], current_time - pressed_keys[move_backward])
+		delta = current_time - pressed_keys[move_backward]
+		direction = add_vectors(mult_vector(move_speed * delta / 1000, camera_basis[2][:3]), direction)
 		pressed_keys[move_backward] = current_time
 
 	if move_left in pressed_keys:
-		move_camera([-1, 0, 0], current_time - pressed_keys[move_left])
+		delta = current_time - pressed_keys[move_left]
+		direction = add_vectors(mult_vector(-move_speed * delta / 1000, camera_basis[0][:3]), direction)
 		pressed_keys[move_left] = current_time
 
 	if move_right in pressed_keys:
-		move_camera([1, 0, 0], current_time - pressed_keys[move_right])
+		delta = current_time - pressed_keys[move_right]
+		direction = add_vectors(mult_vector(move_speed * delta / 1000, camera_basis[0][:3]), direction)
 		pressed_keys[move_right] = current_time
 
 	if move_up in pressed_keys:
-		move_camera([0, 1, 0], current_time - pressed_keys[move_up])
+		delta = current_time - pressed_keys[move_up]
+		direction = add_vectors(mult_vector(move_speed * delta / 1000, camera_basis[1][:3]), direction)
 		pressed_keys[move_up] = current_time
 
 	if move_down in pressed_keys:
-		move_camera([0, -1, 0], current_time - pressed_keys[move_down])
+		delta = current_time - pressed_keys[move_down]
+		direction = add_vectors(mult_vector(-move_speed * delta / 1000, camera_basis[1][:3]), direction)
 		pressed_keys[move_down] = current_time
+
+	camera_translation_matrix[0][3] += direction[0]
+	camera_translation_matrix[1][3] += direction[1]
+	camera_translation_matrix[2][3] += direction[2]
 
 	# camera rotation - TODO: way of selecting keypress/other mouse button in settings?
 	if GLUT_RIGHT_BUTTON in pressed_mouse:
 		degrees_x = field_of_view_h * pressed_mouse[GLUT_RIGHT_BUTTON][2] / window_width
 		degrees_y = field_of_view_v * pressed_mouse[GLUT_RIGHT_BUTTON][3] / window_height
 
-		camera_rotation[0] = camera_rotation[0] - sensitivity * degrees_y
-		camera_rotation[1] = camera_rotation[1] - sensitivity * degrees_x
+		# calculate new forward, right, and up directions
+		new_rd = roty(camera_basis[0][:3], sensitivity * degrees_x)
+		new_ud = rot_vec_axis_angle(camera_basis[1][:3], camera_basis[0][:3], sensitivity * degrees_y)
+		new_ud = roty(new_ud, sensitivity * degrees_x)
+		new_fd = rot_vec_axis_angle(camera_basis[2][:3], camera_basis[0][:3], sensitivity * degrees_y)
+		new_fd = roty(new_fd, sensitivity * degrees_x)
 
+		# assign the new directions
+		camera_basis[0][0] = new_rd[0]
+		camera_basis[0][1] = new_rd[1]
+		camera_basis[0][2] = new_rd[2]
+		camera_basis[1][0] = new_ud[0]
+		camera_basis[1][1] = new_ud[1]
+		camera_basis[1][2] = new_ud[2]
+		camera_basis[2][0] = new_fd[0]
+		camera_basis[2][1] = new_fd[1]
+		camera_basis[2][2] = new_fd[2]
+
+		# reset mouse deltas
 		pressed_mouse[GLUT_RIGHT_BUTTON][2] = 0
 		pressed_mouse[GLUT_RIGHT_BUTTON][3] = 0
 
@@ -316,9 +364,7 @@ glEnable(GL_DEPTH_TEST)
 #glShadeModel(GL_SMOOTH)  # default
 #glShadeModel(GL_FLAT)
 
-glMatrixMode(GL_PROJECTION)
-glLoadIdentity()
-gluPerspective(field_of_view_v, float(window_width)/float(window_height), clip_dist_near, clip_dist_far)
 
-glMatrixMode(GL_MODELVIEW)  # TODO: move this to the display function?
-
+# set up projection matrix
+projection_matrix = create_projection_matrix(field_of_view_v, window_width, window_height, clip_dist_near, clip_dist_far)
+projection_matrix = np.array(projection_matrix).T

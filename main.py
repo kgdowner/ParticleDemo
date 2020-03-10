@@ -11,9 +11,11 @@ test_vert = """
 
 	out vec3 color;
 
+	uniform mat4 mvp = mat4(1.0);
+
 	void main() {
 		color = in_color;
-		gl_Position = vec4(in_position, 1.0);
+		gl_Position = mvp * vec4(in_position, 1.0);
 	}
 """
 
