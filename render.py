@@ -40,13 +40,15 @@ move_down		= ord('c')
 
 # globals
 projection_matrix = None
-camera_translation_matrix = [[1, 0, 0, 0], [0, 1, 0, 2], [0, 0, 1, -6], [0, 0, 0, 1]]
+camera_translation_matrix = [[1, 0, 0, 0], [0, 1, 0, 4], [0, 0, 1, -20], [0, 0, 0, 1]]
 camera_basis = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]]
 
 pressed_keys = {}
 pressed_mouse = {}
 
 render_objects = []
+
+idle_callback = None
 
 
 
@@ -244,15 +246,26 @@ def display_func():
 
 	# draw objects passed to the render_objects array
 	for robj in render_objects:
-		glUseProgram(robj[1])
+		glUseProgram(robj["program"])
+
+		# if there's a model matrix in the redner object, fold it into the mvp, otherwise just use vp
+		mvp = vp
+		if "matrix" in robj:
+			mvp = np.dot(robj["matrix"], vp)
 
 		# set the modelview matrix uniform
-		mvp_location = glGetUniformLocation(robj[1], "mvp")
+		mvp_location = glGetUniformLocation(robj["program"], "mvp")
 		if mvp_location != -1:
-			glUniformMatrix4fv(mvp_location, 1, GL_FALSE, vp)
+			glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp)
 
-		glBindVertexArray(robj[0])
-		glDrawArrays(GL_TRIANGLES, 0, 3)
+		# draw this array
+		glBindVertexArray(robj["vao"])
+
+		glBindBuffer(GL_ARRAY_BUFFER, glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING)[0])
+		vbo_size = glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE)
+		triangle_count = vbo_size // 12  # it seems the vbo stores a vector of size 4 regardless of a vao attrib size of 3, so /4, then /3 for # tris
+
+		glDrawArrays(GL_TRIANGLES, 0, triangle_count)
 
 	glUseProgram(0)
 
@@ -261,7 +274,7 @@ def display_func():
 
 
 def idle_func():
-	global pressed_keys, pressed_mouse, camera_rotation
+	global pressed_keys, pressed_mouse, camera_rotation, idle_callback
 
 	# get time
 	current_time = glutGet(GLUT_ELAPSED_TIME)
@@ -329,6 +342,10 @@ def idle_func():
 		# reset mouse deltas
 		pressed_mouse[GLUT_RIGHT_BUTTON][2] = 0
 		pressed_mouse[GLUT_RIGHT_BUTTON][3] = 0
+
+	# callback function for running particle code
+	if idle_callback:
+		idle_callback(current_time)
 
 	# tell glut to re-run the display function
 	glutPostRedisplay()
