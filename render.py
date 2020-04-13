@@ -7,6 +7,8 @@ from OpenGL.GLU import *
 from math import *
 import numpy as np
 
+import imageio
+
 from vector_util import *
 
 
@@ -82,10 +84,25 @@ def create_vbo(data_list, buffer_type):
 	return index
 
 
-def create_vao(points, colors):
+def create_tbo(image_path, buffer_type):
+	data = imageio.imread(image_path)
+	height, width, _ = data.shape
+
+	index = glGenTextures(1)
+	glBindTexture(buffer_type, index)
+	glTexImage2D(buffer_type, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data)
+
+	glTexParameteri(buffer_type, GL_TEXTURE_MIN_FILTER, GL_NEAREST)
+	glTexParameteri(buffer_type, GL_TEXTURE_MAG_FILTER, GL_NEAREST)
+
+	return index
+
+
+def create_vao(points, colors, uv_coordinates):
 	# create vertex buffer objects
 	index_points = create_vbo(points, GL_ARRAY_BUFFER)
 	index_colors = create_vbo(colors, GL_ARRAY_BUFFER)
+	index_uv	 = create_vbo(uv_coordinates, GL_ARRAY_BUFFER)
 
 	# create vertex array object & add vbos
 	index_vao = glGenVertexArrays(1)
@@ -97,9 +114,13 @@ def create_vao(points, colors):
 	glBindBuffer(GL_ARRAY_BUFFER, index_colors)
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, None)
 
+	glBindBuffer(GL_ARRAY_BUFFER, index_uv)
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, None)
+
 	# enable the vbo's in the vao
 	glEnableVertexAttribArray(0)
 	glEnableVertexAttribArray(1)
+	glEnableVertexAttribArray(2)
 
 	return index_vao
 
@@ -245,6 +266,8 @@ def display_func():
 
 
 	# draw objects passed to the render_objects array
+	glActiveTexture(GL_TEXTURE0)
+	glBindTexture(GL_TEXTURE_2D, 1)
 	for robj in render_objects:
 		glUseProgram(robj["program"])
 
@@ -257,6 +280,11 @@ def display_func():
 		mvp_location = glGetUniformLocation(robj["program"], "mvp")
 		if mvp_location != -1:
 			glUniformMatrix4fv(mvp_location, 1, GL_FALSE, mvp)
+
+		# set the texture location
+		tex_location = glGetUniformLocation(robj["program"], "texture_sample")
+		if tex_location != -1:
+			glUniform1i(tex_location, 0)
 
 		# draw this array
 		glBindVertexArray(robj["vao"])
@@ -377,6 +405,8 @@ glutIdleFunc(idle_func)
 glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3])
 glClearDepth(clear_depth)
 glEnable(GL_DEPTH_TEST)
+glEnable(GL_BLEND)
+glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA)
 #glDepthFunc(GL_LESS)  # default
 #glShadeModel(GL_SMOOTH)  # default
 #glShadeModel(GL_FLAT)

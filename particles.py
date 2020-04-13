@@ -1,5 +1,6 @@
 import render
 import random
+import math
 
 random.seed()
 
@@ -8,13 +9,17 @@ test_vert = """
 	#version 330
 	in vec3 in_position;
 	in vec3 in_color;
+	in vec2 uv_coords;
 
 	out vec3 color;
+	out vec2 uv;
 
 	uniform mat4 mvp = mat4(1.0);
 
 	void main() {
 		color = in_color;
+		uv = uv_coords;
+
 		gl_Position = mvp * vec4(in_position, 1.0);
 	}
 """
@@ -22,17 +27,24 @@ test_vert = """
 test_frag = """
 	#version 330
 	in vec3 color;
+	in vec2 uv;
 
 	out vec4 frag_color;
 
+	uniform sampler2D texture_sample;
+
 	void main() {
-		frag_color = vec4(color, 1.0);
+		vec4 texture_color = texture(texture_sample, uv).rgba;
+
+		frag_color = texture_color;
+		//frag_color = vec4(color * vec3(texture_color / 255), texture_color.z);
+		//frag_color = vec4(color, 1.0);
 	}
 """
 
 # create a test triangle & add it to the object array to be drawn
 #test_vao = render.create_vao([0, 0, 0, 1, 0, 0, 0, 1, 0], [1, 0, 0, 0, 1, 0, 0, 0, 1])
-test_program = render.create_program(test_vert, test_frag, ["in_position, in_color"])
+test_program = render.create_program(test_vert, test_frag, ["in_position", "in_color", "uv_coords"])
 
 #square_vao = render.create_vao([0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0], [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1])
 square_vao = render.create_vao([
@@ -49,7 +61,19 @@ square_vao = render.create_vao([
 		1, 1, 1,
 		1, 1, 1,
 		1, 1, 1
+	], [
+		0, 0,
+		1, 0,
+		0, 1,
+		0, 1,
+		1, 0,
+		1, 1
 ])
+
+
+#test = render.create_tbo("test_image2.png", render.GL_TEXTURE_2D)
+test = render.create_tbo("dot.png", render.GL_TEXTURE_2D)
+print(test)
 
 
 systems = []
@@ -222,6 +246,23 @@ def ic(timestamp):
 			render.render_objects[particle_index]["matrix"][0][0] = 0
 			render.render_objects[particle_index]["matrix"][1][2] = 0
 			render.render_objects[particle_index]["matrix"][2][2] = 0
+
+	# depth-sort all the particles based on the camera position
+	camera_pos = [
+		render.camera_translation_matrix[0][3],
+		render.camera_translation_matrix[1][3],
+		render.camera_translation_matrix[2][3],
+	]
+
+	def dist(b):
+		return math.sqrt(
+			math.pow(camera_pos[0] - b[3][0], 2) +
+			math.pow(camera_pos[1] - b[3][1], 2) +
+			math.pow(camera_pos[2] - b[3][2], 2)
+		)
+
+	particles.sort(key=dist, reverse=True)
+
 
 	# record the time this was run for the movement deltas
 	last_ic_time = timestamp

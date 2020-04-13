@@ -3,7 +3,6 @@
 import particles
 import random
 
-
 system_create_times = []
 
 def mc(timestamp, delta):
@@ -30,7 +29,7 @@ def mc(timestamp, delta):
 			particles.free_particle_system(ct[0])
 			system_create_times.remove(ct)
 
-	print("System Count: ", len(particles.systems), "\t\tParticle Count: ", len(particles.particles), "\t\t", len(particles.free_systems))
+	#print("System Count: ", len(particles.systems), "\t\tParticle Count: ", len(particles.particles), "\t\t", len(particles.free_systems))
 
 particles.main_callback = mc
 
