@@ -172,7 +172,7 @@ def create_particle(system_index=-1, lifetime=1.0, scale=1.0, position=[0, 0, 0]
 		particles.append([0, 0, 0, 0, 0])
 
 		# TEMP: for now just create render objects for every created particle
-		render.render_objects.append({"vao":square_vao, "program":test_program, "matrix":[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]})
+		render.render_objects.append({"vao":square_vao, "program":test_program, "matrix":[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], "depth": False})
 
 	# set initial properties
 	particles[particle_index][0] = system_index
@@ -236,6 +236,17 @@ def ic(timestamp):
 		# update all the render objects while we're here
 		system_index = particles[particle_index][0]
 		if system_index > -1 and systems[system_index]["active"]:
+			# render.render_objects[particle_index]["matrix"][0][1] = render.camera_basis[0][1]  # attempt to rotate things
+			# render.render_objects[particle_index]["matrix"][0][2] = render.camera_basis[0][2]
+			# render.render_objects[particle_index]["matrix"][0][3] = render.camera_basis[0][3]
+			# render.render_objects[particle_index]["matrix"][1][0] = render.camera_basis[1][0]
+			# render.render_objects[particle_index]["matrix"][1][2] = render.camera_basis[1][2]
+			# render.render_objects[particle_index]["matrix"][1][3] = render.camera_basis[1][3]
+			# render.render_objects[particle_index]["matrix"][2][0] = render.camera_basis[2][0]
+			# render.render_objects[particle_index]["matrix"][2][1] = render.camera_basis[2][1]
+			# render.render_objects[particle_index]["matrix"][2][3] = render.camera_basis[2][3]
+			# render.render_objects[particle_index]["matrix"][3][3] = render.camera_basis[3][3]
+
 			render.render_objects[particle_index]["matrix"][0][0] = particles[particle_index][2]
 			render.render_objects[particle_index]["matrix"][1][1] = particles[particle_index][2]
 			render.render_objects[particle_index]["matrix"][2][2] = particles[particle_index][2]
@@ -248,20 +259,21 @@ def ic(timestamp):
 			render.render_objects[particle_index]["matrix"][2][2] = 0
 
 	# depth-sort all the particles based on the camera position
-	camera_pos = [
-		render.camera_translation_matrix[0][3],
-		render.camera_translation_matrix[1][3],
-		render.camera_translation_matrix[2][3],
-	]
+	# camera_pos = [
+	# 	render.camera_translation_matrix[0][3],
+	# 	render.camera_translation_matrix[1][3],
+	# 	render.camera_translation_matrix[2][3],
+	# ]
 
-	def dist(b):
-		return math.sqrt(
-			math.pow(camera_pos[0] - b[3][0], 2) +
-			math.pow(camera_pos[1] - b[3][1], 2) +
-			math.pow(camera_pos[2] - b[3][2], 2)
-		)
+	# def dist(b):
+	# 	return (
+	# 		math.pow(camera_pos[0] - b[3][0], 2) +
+	# 		math.pow(camera_pos[1] - b[3][1], 2) +
+	# 		math.pow(camera_pos[2] - b[3][2], 2)
+	# 	)
 
-	particles.sort(key=dist, reverse=True)
+	# particles.sort(key=dist, reverse=True)
+	# ^^ replaced with simply not rendering the particles with the depth buffer on
 
 
 	# record the time this was run for the movement deltas

@@ -26,6 +26,7 @@ field_of_view_v	= degrees(2 * atan(tan(radians(field_of_view_h) / 2) * window_he
 clip_dist_near	= 0.1
 clip_dist_far	= 100
 clear_color		= [0, 0, 0, 0]
+clear_color		= [0.15, 0.15, 0.15, 1]
 clear_depth		= 1.0
 
 sensitivity	= 4		# 1 = direct translation from pixels to FOV angle moved
@@ -271,7 +272,7 @@ def display_func():
 	for robj in render_objects:
 		glUseProgram(robj["program"])
 
-		# if there's a model matrix in the redner object, fold it into the mvp, otherwise just use vp
+		# if there's a model matrix in the render object, fold it into the mvp, otherwise just use vp
 		mvp = vp
 		if "matrix" in robj:
 			mvp = np.dot(robj["matrix"], vp)
@@ -286,6 +287,10 @@ def display_func():
 		if tex_location != -1:
 			glUniform1i(tex_location, 0)
 
+		# conditionally disable depth buffering
+		if "depth" in robj:# and robj["depth"] == False:
+			glDisable(GL_DEPTH_TEST)
+
 		# draw this array
 		glBindVertexArray(robj["vao"])
 
@@ -294,6 +299,10 @@ def display_func():
 		triangle_count = vbo_size // 12  # it seems the vbo stores a vector of size 4 regardless of a vao attrib size of 3, so /4, then /3 for # tris
 
 		glDrawArrays(GL_TRIANGLES, 0, triangle_count)
+
+		# re-enable the depth buffer
+		glEnable(GL_DEPTH_TEST)
+
 
 	glUseProgram(0)
 

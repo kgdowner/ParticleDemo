@@ -8,19 +8,19 @@ system_create_times = []
 def mc(timestamp, delta):
 	global system_create_times
 
-	if random.random() < 0.01:
+	if random.random() < 0.05:
 		system_index = particles.create_particle_system(particles.square_vao, particles.test_program, {
 			"active": True,
 			"particle_count": 100,
 			"spawn_type": "instant",  # "instant" "continuous"  ?
 			"lifetime_min": 0,
 			"lifetime_max": 4,
-			"start_velocity_min": [-10, -10, -10],
-			"start_velocity_max": [10, 10, 10],
+			"start_velocity_min": [-2, -2, -2],
+			"start_velocity_max": [2, 2, 2],
 			"start_position": [random.uniform(-10, 10), random.uniform(4, 12), random.uniform(-10, 10)],
 			"start_scale": 1,
 			"end_scale": 0,
-			"gravity": [0, -10, 0],
+			"gravity": [0, -2, 0],
 		})
 		system_create_times.append((system_index, timestamp))
 
