@@ -8,7 +8,10 @@ system_create_times = []
 def mc(timestamp, delta):
 	global system_create_times
 
-	if random.random() < 0.05:
+	#print(len(particles.systems), len(particles.free_systems))
+	#print(timestamp)
+
+	if random.random() < 0.05 and len(particles.systems) < 6 and len(particles.free_systems) == 0 and timestamp > 3000:
 		system_index = particles.create_particle_system(particles.square_vao, particles.test_program, {
 			"active": True,
 			"particle_count": 100,

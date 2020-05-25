@@ -16,8 +16,8 @@ from vector_util import *
 # settings
 display_mode	= GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH
 window_title	= "Particle Demo"
-window_width	= 1024
-window_height	= 768
+window_width	= 2560
+window_height	= 1440
 window_x		= 2300
 window_y		= 600
 
@@ -396,6 +396,7 @@ glutInitWindowSize(window_width, window_height)
 glutInitWindowPosition(window_x, window_y)
 
 window = glutCreateWindow(window_title)
+glutFullScreen()
 
 
 # register glut callbacks

@@ -72,8 +72,10 @@ square_vao = render.create_vao([
 
 
 #test = render.create_tbo("test_image2.png", render.GL_TEXTURE_2D)
-test = render.create_tbo("dot.png", render.GL_TEXTURE_2D)
-print(test)
+#test = render.create_tbo("dot.png", render.GL_TEXTURE_2D)
+test = render.create_tbo("dot2.png", render.GL_TEXTURE_2D)
+#test = render.create_tbo("star.png", render.GL_TEXTURE_2D)
+#test = render.create_tbo("star2.png", render.GL_TEXTURE_2D)
 
 
 systems = []
