@@ -39,6 +39,7 @@ move_right		= ord('d')
 move_up			= ord(' ')
 move_down		= ord('c')
 #pan_camera		= GLUT_RIGHT_BUTTON
+exit_key		= 27  # ASCII escape
 
 
 # globals
@@ -312,6 +313,10 @@ def display_func():
 
 def idle_func():
 	global pressed_keys, pressed_mouse, camera_rotation, idle_callback
+
+	# exit condition
+	if exit_key in pressed_keys:
+		sys.exit()
 
 	# get time
 	current_time = glutGet(GLUT_ELAPSED_TIME)
