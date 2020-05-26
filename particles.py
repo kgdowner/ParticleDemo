@@ -174,7 +174,7 @@ def create_particle(system_index=-1, lifetime=1.0, scale=1.0, position=[0, 0, 0]
 		particles.append([0, 0, 0, 0, 0])
 
 		# TEMP: for now just create render objects for every created particle
-		render.render_objects.append({"vao":square_vao, "program":test_program, "matrix":[[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]], "depth": False})
+		render.render_objects.append({"vao":square_vao, "program":test_program, "matrix":[[0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 0], [0, 0, 0, 1]], "depth": False})
 
 	# set initial properties
 	particles[particle_index][0] = system_index
