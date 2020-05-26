@@ -16,10 +16,11 @@ from vector_util import *
 # settings
 display_mode	= GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH
 window_title	= "Particle Demo"
-window_width	= 2560
-window_height	= 1440
-window_x		= 2300
-window_y		= 600
+window_width	= 1280
+window_height	= 720
+window_x		= 0
+window_y		= 0
+fullscreen		= False
 
 field_of_view_h	= 90
 field_of_view_v	= degrees(2 * atan(tan(radians(field_of_view_h) / 2) * window_height / window_width))
@@ -39,6 +40,7 @@ move_right		= ord('d')
 move_up			= ord(' ')
 move_down		= ord('c')
 #pan_camera		= GLUT_RIGHT_BUTTON
+
 exit_key		= 27  # ASCII escape
 
 
@@ -401,8 +403,9 @@ glutInitWindowSize(window_width, window_height)
 glutInitWindowPosition(window_x, window_y)
 
 window = glutCreateWindow(window_title)
-glutFullScreen()
 
+if fullscreen:
+	glutFullScreen()
 
 # register glut callbacks
 glutIgnoreKeyRepeat(1)
